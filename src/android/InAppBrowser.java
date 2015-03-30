@@ -967,6 +967,40 @@ public class InAppBrowser extends CordovaPlugin {
             }
         }
 
+        // Intercept Kivra app specific URL schemas that needs to be handled in special ways
+        // @TODO, generalize this like e.g the chrome browser does
+        public boolean shouldOverrideUrlLoading(WebView view, String url) {
+
+            // BankID URL:s should open up on top while letting webview keep on running in background
+            if (url.startsWith("bankid:")) {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    intent.setPackage("com.bankid.bus");
+                    intent.setData(Uri.parse(url));
+                    LOG.d(LOG_TAG, "Intercepting BankID app" + url );
+                    cordova.getActivity().startActivityForResult(intent, 0);
+                    return true;
+                } catch (android.content.ActivityNotFoundException e) {
+                    LOG.e(LOG_TAG, "Error opening BankID app" + url + ":" + e.toString());
+                }
+            }
+
+            // Kivra URL:s should open up by closing the current webview
+            else if (url.startsWith("kivra:")) {
+               try {
+                   closeDialog();
+                   Intent intent = new Intent(Intent.ACTION_VIEW);
+                   intent.setPackage("com.kivra.Kivra");
+                   intent.setData(Uri.parse(url));
+                   LOG.d(LOG_TAG, "Opening Kivra app" + url );
+                   cordova.getActivity().startActivity(intent);
+                   return true;
+                } catch (android.content.ActivityNotFoundException e) {
+                    LOG.e(LOG_TAG, "Error opening Kivra app" + url + ":" + e.toString());
+                }
+            }
+            return false;
+        }
         public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
             super.onReceivedError(view, errorCode, description, failingUrl);
 
