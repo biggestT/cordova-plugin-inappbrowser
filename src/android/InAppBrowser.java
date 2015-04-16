@@ -18,6 +18,16 @@
 */
 package org.apache.cordova.inappbrowser;
 
+// custom pdf viweing stuff
+import javax.net.ssl.HttpsURLConnection;
+import java.net.URL;
+import java.io.BufferedInputStream;
+import java.io.InputStream;
+import java.io.FileOutputStream;
+import android.os.AsyncTask;
+import java.io.File;
+import java.io.FileDescriptor;
+
 import android.annotation.SuppressLint;
 import org.apache.cordova.inappbrowser.InAppBrowserDialog;
 import android.content.Context;
@@ -61,6 +71,8 @@ import org.json.JSONObject;
 import java.util.HashMap;
 import java.util.StringTokenizer;
 
+
+
 @SuppressLint("SetJavaScriptEnabled")
 public class InAppBrowser extends CordovaPlugin {
 
@@ -68,6 +80,7 @@ public class InAppBrowser extends CordovaPlugin {
     protected static final String LOG_TAG = "InAppBrowser";
     private static final String SELF = "_self";
     private static final String SYSTEM = "_system";
+
     // private static final String BLANK = "_blank";
     private static final String EXIT_EVENT = "exit";
     private static final String LOCATION = "location";
@@ -87,6 +100,44 @@ public class InAppBrowser extends CordovaPlugin {
     private boolean clearAllCache= false;
     private boolean clearSessionCache=false;
 
+    // custom view pdf stuff
+    private static final String PDFVIEWER= "_pdfviewer";
+
+    private class DownloadFileTask extends AsyncTask<String, Void, String> {
+        private Exception exception;
+
+        @Override
+        protected String doInBackground(String... urls) {
+            String fileName = "test.pdf";
+            File outFile;
+            try {
+                URL pdfUrl = new URL(urls[0]);
+                HttpsURLConnection urlConnection = (HttpsURLConnection) pdfUrl.openConnection();
+                InputStream is = new BufferedInputStream(urlConnection.getInputStream());
+                FileOutputStream fos = InAppBrowser.this.cordova.getActivity().openFileOutput(fileName, Context.MODE_WORLD_READABLE);
+                byte[] buffer = new byte[1024];
+                int len = 0;
+                while ( (len = is.read(buffer)) > 0) {
+                    fos.write(buffer, 0, len);
+                }
+                fos.close();
+                //                String path = "content://com.kivra.Kivra/"+fileName;
+                return fileName;
+            }
+            catch (Exception e) {
+                this.exception = e;
+                return null;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(String fileName) {
+            Log.d(LOG_TAG, "finished getting file");
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(Uri.fromFile(InAppBrowser.this.cordova.getActivity().getFileStreamPath(fileName)), "application/pdf");
+            InAppBrowser.this.cordova.getActivity().startActivity(intent);
+        }
+    }
     /**
      * Executes the request and returns PluginResult.
      *
@@ -95,6 +146,7 @@ public class InAppBrowser extends CordovaPlugin {
      * @param callbackId    The callback id used when calling back into JavaScript.
      * @return              A PluginResult object with a status and message.
      */
+
     public boolean execute(String action, CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
         if (action.equals("open")) {
             this.callbackContext = callbackContext;
@@ -143,6 +195,12 @@ public class InAppBrowser extends CordovaPlugin {
                     else if (SYSTEM.equals(target)) {
                         Log.d(LOG_TAG, "in system");
                         result = openExternal(url);
+                    }
+                    // pdf - custom target
+                    else if (PDFVIEWER.equals(target)) {
+                        Log.d(LOG_TAG, "Initated downloading of pdf");
+                        Log.d(LOG_TAG, url);
+                        viewPdf(url);
                     }
                     // BLANK - or anything else
                     else {
@@ -225,7 +283,14 @@ public class InAppBrowser extends CordovaPlugin {
     public void onDestroy() {
         closeDialog();
     }
-    
+
+    /**
+     * 
+     */
+    private void viewPdf(String url) {
+        new DownloadFileTask().execute(url);
+    }
+                        
     /**
      * Inject an object (script or style) into the InAppBrowser WebView.
      *
@@ -319,7 +384,7 @@ public class InAppBrowser extends CordovaPlugin {
             return e.toString();
         }
     }
-
+    
     /**
      * Closes the dialog
      */
