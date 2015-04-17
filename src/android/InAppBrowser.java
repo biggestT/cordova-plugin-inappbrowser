@@ -27,6 +27,7 @@ import java.io.FileOutputStream;
 import android.os.AsyncTask;
 import java.io.File;
 import java.io.FileDescriptor;
+import android.support.v4.content.FileProvider;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -115,29 +116,37 @@ public class InAppBrowser extends CordovaPlugin {
     private boolean shouldPauseInAppBrowser = false;
 
     // custom view pdf stuff
-    private static final String PDFVIEWER= "_pdfviewer";
+    private static final String FILE_VIEWER = "_fileviewer";
+    private static final String CONTENT_DIR = "content";
+    private static final String KIVRA_APP = "com.kivra.Kivra";
+    private static final String BANKID_APP = "com.bankid.bus";
+    private static final String KIVRA_PROVIDER = "com.kivra.Kivra.fileprovider";
 
-    private class DownloadFileTask extends AsyncTask<String, Void, String> {
+    private class ViewRemoteFileTask extends AsyncTask<String, Void, File> {
+        
         private Exception exception;
+        private Context context;
 
         @Override
-        protected String doInBackground(String... urls) {
-            String fileName = "test.pdf";
-            File outFile;
+        protected File doInBackground(String... urls) {
+            this.context = InAppBrowser.this.cordova.getActivity();
+            File dir = new File(this.context.getCacheDir(), CONTENT_DIR);
+            dir.mkdirs();
+            File outFile = new File(dir, "tempfile");
             try {
                 URL pdfUrl = new URL(urls[0]);
                 HttpsURLConnection urlConnection = (HttpsURLConnection) pdfUrl.openConnection();
                 InputStream is = new BufferedInputStream(urlConnection.getInputStream());
-                FileOutputStream fos = InAppBrowser.this.cordova.getActivity().openFileOutput(fileName, Context.MODE_WORLD_READABLE);
+                FileOutputStream fos = new FileOutputStream(outFile);
                 byte[] buffer = new byte[1024];
                 int len = 0;
                 while ( (len = is.read(buffer)) > 0) {
                     fos.write(buffer, 0, len);
                 }
                 fos.close();
-                //                String path = "content://com.kivra.Kivra/"+fileName;
-                return fileName;
+                return outFile;
             }
+            // @TODO Add proper error handling
             catch (Exception e) {
                 this.exception = e;
                 return null;
@@ -145,10 +154,11 @@ public class InAppBrowser extends CordovaPlugin {
         }
 
         @Override
-        protected void onPostExecute(String fileName) {
-            Log.d(LOG_TAG, "finished getting file");
+        protected void onPostExecute(File file) {
             Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(Uri.fromFile(InAppBrowser.this.cordova.getActivity().getFileStreamPath(fileName)), "application/pdf");
+            Uri contentUri = FileProvider.getUriForFile(this.context, KIVRA_PROVIDER, file);
+            intent.setDataAndType(contentUri, "application/pdf"); // currently only supports pdf files
+            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             InAppBrowser.this.cordova.getActivity().startActivity(intent);
         }
     }
@@ -245,10 +255,8 @@ public class InAppBrowser extends CordovaPlugin {
                         result = openExternal(url);
                     }
                     // pdf - custom target
-                    else if (PDFVIEWER.equals(target)) {
-                        Log.d(LOG_TAG, "Initated downloading of pdf");
-                        Log.d(LOG_TAG, url);
-                        viewPdf(url);
+                    else if (FILE_VIEWER.equals(target)) {
+                        viewFile(url);
                     }
                     // BLANK - or anything else
                     else {
@@ -1032,9 +1040,8 @@ public class InAppBrowser extends CordovaPlugin {
             if (url.startsWith("bankid:")) {
                 try {
                     Intent intent = new Intent(Intent.ACTION_VIEW);
-                    intent.setPackage("com.bankid.bus");
+                    intent.setPackage(BANKID_APP);
                     intent.setData(Uri.parse(url));
-                    LOG.d(LOG_TAG, "Intercepting BankID app" + url );
                     cordova.getActivity().startActivityForResult(intent, 0);
                     return true;
                 } catch (android.content.ActivityNotFoundException e) {
@@ -1047,9 +1054,8 @@ public class InAppBrowser extends CordovaPlugin {
                try {
                    closeDialog();
                    Intent intent = new Intent(Intent.ACTION_VIEW);
-                   intent.setPackage("com.kivra.Kivra");
+                   intent.setPackage(KIVRA_APP);
                    intent.setData(Uri.parse(url));
-                   LOG.d(LOG_TAG, "Opening Kivra app" + url );
                    cordova.getActivity().startActivity(intent);
                    return true;
                 } catch (android.content.ActivityNotFoundException e) {
