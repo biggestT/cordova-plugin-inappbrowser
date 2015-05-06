@@ -60,6 +60,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.Toast;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.Config;
@@ -126,6 +127,7 @@ public class InAppBrowser extends CordovaPlugin {
         
         private Exception exception;
         private Context context;
+        private String contentType;
 
         @Override
         protected File doInBackground(String... urls) {
@@ -136,6 +138,7 @@ public class InAppBrowser extends CordovaPlugin {
             try {
                 URL pdfUrl = new URL(urls[0]);
                 HttpsURLConnection urlConnection = (HttpsURLConnection) pdfUrl.openConnection();
+                contentType = urlConnection.getContentType();
                 InputStream is = new BufferedInputStream(urlConnection.getInputStream());
                 FileOutputStream fos = new FileOutputStream(outFile);
                 byte[] buffer = new byte[1024];
@@ -157,9 +160,19 @@ public class InAppBrowser extends CordovaPlugin {
         protected void onPostExecute(File file) {
             Intent intent = new Intent(Intent.ACTION_VIEW);
             Uri contentUri = FileProvider.getUriForFile(this.context, KIVRA_PROVIDER, file);
-            intent.setDataAndType(contentUri, "application/pdf"); // currently only supports pdf files
+            intent.setDataAndType(contentUri, contentType);
             intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            InAppBrowser.this.cordova.getActivity().startActivity(intent);
+            // check if there are an application available to present this filetype
+            if (intent.resolveActivity(context.getPackageManager()) != null) {
+                context.startActivity(intent);
+            }
+            // display error message
+            else {
+                CharSequence text = "Could not find application for this filetype";
+                int duration = Toast.LENGTH_LONG;
+                Toast toast = Toast.makeText(context, text, duration);
+                toast.show();
+            }
         }
     }
     /**
