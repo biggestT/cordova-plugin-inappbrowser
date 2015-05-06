@@ -138,6 +138,7 @@ public class InAppBrowser extends CordovaPlugin {
             try {
                 URL pdfUrl = new URL(urls[0]);
                 HttpsURLConnection urlConnection = (HttpsURLConnection) pdfUrl.openConnection();
+                InAppBrowser.this.onDownloadStart();
                 contentType = urlConnection.getContentType();
                 InputStream is = new BufferedInputStream(urlConnection.getInputStream());
                 FileOutputStream fos = new FileOutputStream(outFile);
@@ -162,6 +163,7 @@ public class InAppBrowser extends CordovaPlugin {
             Uri contentUri = FileProvider.getUriForFile(this.context, KIVRA_PROVIDER, file);
             intent.setDataAndType(contentUri, contentType);
             intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            InAppBrowser.this.onDownloadFinished();
             // check if there are an application available to present this filetype
             if (intent.resolveActivity(context.getPackageManager()) != null) {
                 context.startActivity(intent);
@@ -175,6 +177,28 @@ public class InAppBrowser extends CordovaPlugin {
             }
         }
     }
+
+    public void onDownloadFinished() {
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("type", LOAD_STOP_EVENT);
+            obj.put("category", "filedownload");
+            sendUpdate(obj, true);
+        } catch (JSONException ex) {
+            Log.d(LOG_TAG, "Should never happen");
+        }
+    }
+    public void onDownloadStart() {
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("type", LOAD_START_EVENT);
+            obj.put("category", "filedownload");
+            sendUpdate(obj, true);
+        } catch (JSONException ex) {
+            Log.d(LOG_TAG, "Should never happen");
+        }
+    }
+
     /**
      * Executes the request and returns PluginResult.
      *
