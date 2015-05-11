@@ -121,7 +121,8 @@ public class InAppBrowser extends CordovaPlugin {
     private static final String CONTENT_DIR = "content";
     private static final String KIVRA_APP = "com.kivra.Kivra";
     private static final String BANKID_APP = "com.bankid.bus";
-    private static final String KIVRA_PROVIDER = "com.kivra.Kivra.fileprovider";
+    private static final String MARKET_APP = "com.android.vending";
+    private static final String KIVRA_FILE_PROVIDER = "com.kivra.Kivra.fileprovider";
 
     private class ViewRemoteFileTask extends AsyncTask<String, Void, File> {
         
@@ -130,15 +131,20 @@ public class InAppBrowser extends CordovaPlugin {
         private String contentType;
 
         @Override
-        protected File doInBackground(String... urls) {
+        protected void onPreExecute() {
+            // notify client that download has started
+            InAppBrowser.this.onDownloadStart();
             this.context = InAppBrowser.this.cordova.getActivity();
+        }
+        
+        @Override
+        protected File doInBackground(String... urls) {
             File dir = new File(this.context.getCacheDir(), CONTENT_DIR);
             dir.mkdirs();
             File outFile = new File(dir, "tempfile");
             try {
                 URL pdfUrl = new URL(urls[0]);
                 HttpsURLConnection urlConnection = (HttpsURLConnection) pdfUrl.openConnection();
-                InAppBrowser.this.onDownloadStart();
                 contentType = urlConnection.getContentType();
                 InputStream is = new BufferedInputStream(urlConnection.getInputStream());
                 FileOutputStream fos = new FileOutputStream(outFile);
@@ -160,7 +166,7 @@ public class InAppBrowser extends CordovaPlugin {
         @Override
         protected void onPostExecute(File file) {
             Intent intent = new Intent(Intent.ACTION_VIEW);
-            Uri contentUri = FileProvider.getUriForFile(this.context, KIVRA_PROVIDER, file);
+            Uri contentUri = FileProvider.getUriForFile(this.context, KIVRA_FILE_PROVIDER, file);
             intent.setDataAndType(contentUri, contentType);
             intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             InAppBrowser.this.onDownloadFinished();
@@ -1097,6 +1103,19 @@ public class InAppBrowser extends CordovaPlugin {
                    return true;
                 } catch (android.content.ActivityNotFoundException e) {
                     LOG.e(LOG_TAG, "Error opening Kivra app" + url + ":" + e.toString());
+                }
+            }
+            // Market URL:s should open up by closing the current webview
+            else if (url.startsWith("market:")) {
+               try {
+                   closeDialog();
+                   Intent intent = new Intent(Intent.ACTION_VIEW);
+                   intent.setPackage(MARKET_APP);
+                   intent.setData(Uri.parse(url));
+                   cordova.getActivity().startActivity(intent);
+                   return true;
+                } catch (android.content.ActivityNotFoundException e) {
+                    LOG.e(LOG_TAG, "Error opening market app" + url + ":" + e.toString());
                 }
             }
             return false;
