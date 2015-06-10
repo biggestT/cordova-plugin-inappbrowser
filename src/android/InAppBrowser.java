@@ -141,7 +141,7 @@ public class InAppBrowser extends CordovaPlugin {
         protected File doInBackground(String... urls) {
             File dir = new File(this.context.getCacheDir(), CONTENT_DIR);
             dir.mkdirs();
-            File outFile = new File(dir, "tempfile");
+            File outFile = new File(dir, Uri.parse(urls[0]).getLastPathSegment());
             try {
                 URL pdfUrl = new URL(urls[0]);
                 HttpsURLConnection urlConnection = (HttpsURLConnection) pdfUrl.openConnection();
