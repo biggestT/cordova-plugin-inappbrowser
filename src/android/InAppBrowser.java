@@ -18,7 +18,7 @@
 */
 package org.apache.cordova.inappbrowser;
 
-// custom pdf viweing stuff
+// custom file downloading/viewing stuff
 import javax.net.ssl.HttpsURLConnection;
 import java.net.URL;
 import java.io.BufferedInputStream;
@@ -28,6 +28,7 @@ import android.os.AsyncTask;
 import java.io.File;
 import java.io.FileDescriptor;
 import android.support.v4.content.FileProvider;
+import android.content.ActivityNotFoundException;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -81,7 +82,6 @@ import java.util.HashMap;
 import java.util.StringTokenizer;
 
 
-
 @SuppressLint("SetJavaScriptEnabled")
 public class InAppBrowser extends CordovaPlugin {
 
@@ -129,23 +129,40 @@ public class InAppBrowser extends CordovaPlugin {
         private Exception exception;
         private Context context;
         private String contentType;
+        private Intent intent;
 
+        private void showErrorMessage(CharSequence msg) {
+             int duration = Toast.LENGTH_LONG;
+             Toast toast = Toast.makeText(context, msg, duration);
+             toast.show();    
+        }
+            
         @Override
         protected void onPreExecute() {
-            // notify client that download has started
-            InAppBrowser.this.onDownloadStart();
+            // notify that download has started
+            InAppBrowser.this.onDownloadUpdate(LOAD_START_EVENT);
             this.context = InAppBrowser.this.cordova.getActivity();
+            intent = new Intent(Intent.ACTION_VIEW);
         }
         
         @Override
         protected File doInBackground(String... urls) {
             File dir = new File(this.context.getCacheDir(), CONTENT_DIR);
+            String fileUrlString = urls[0];
             dir.mkdirs();
-            File outFile = new File(dir, Uri.parse(urls[0]).getLastPathSegment());
+            File outFile = new File(dir, Uri.parse(fileUrlString).getLastPathSegment());
             try {
-                URL pdfUrl = new URL(urls[0]);
-                HttpsURLConnection urlConnection = (HttpsURLConnection) pdfUrl.openConnection();
+                URL fileUrl = new URL(fileUrlString);
+                HttpsURLConnection urlConnection = (HttpsURLConnection) fileUrl.openConnection();
                 contentType = urlConnection.getContentType();
+                intent.setType(contentType);
+                Uri contentUri = FileProvider.getUriForFile(this.context, KIVRA_FILE_PROVIDER, outFile);
+                intent.setDataAndType(contentUri, contentType);
+                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                // check if there are an application available to present this filetype before finish downloading 
+                if (intent.resolveActivity(context.getPackageManager()) == null) {
+                    throw new ActivityNotFoundException("Kunde inte hitta applikation för den här filtypen");
+                }
                 InputStream is = new BufferedInputStream(urlConnection.getInputStream());
                 FileOutputStream fos = new FileOutputStream(outFile);
                 byte[] buffer = new byte[1024];
@@ -156,7 +173,6 @@ public class InAppBrowser extends CordovaPlugin {
                 fos.close();
                 return outFile;
             }
-            // @TODO Add proper error handling
             catch (Exception e) {
                 this.exception = e;
                 return null;
@@ -165,46 +181,39 @@ public class InAppBrowser extends CordovaPlugin {
 
         @Override
         protected void onPostExecute(File file) {
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            Uri contentUri = FileProvider.getUriForFile(this.context, KIVRA_FILE_PROVIDER, file);
-            intent.setDataAndType(contentUri, contentType);
-            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            InAppBrowser.this.onDownloadFinished();
-            // check if there are an application available to present this filetype
-            if (intent.resolveActivity(context.getPackageManager()) != null) {
+            if (this.exception != null) {
+                InAppBrowser.this.onDownloadError(1, this.exception.getMessage());
+                showErrorMessage(this.exception.getMessage()); //@TODO remove this and let client handle display of error message
+            } else {
+                // everything is fine, we can send away our intent to view the file
+                InAppBrowser.this.onDownloadUpdate(LOAD_STOP_EVENT);
                 context.startActivity(intent);
             }
-            // display error message
-            else {
-                CharSequence text = "Could not find application for this filetype";
-                int duration = Toast.LENGTH_LONG;
-                Toast toast = Toast.makeText(context, text, duration);
-                toast.show();
-            }
         }
     }
-
-    public void onDownloadFinished() {
+    
+    public void onDownloadUpdate(String type) {
         try {
             JSONObject obj = new JSONObject();
-            obj.put("type", LOAD_STOP_EVENT);
+            obj.put("type", type);
             obj.put("category", "filedownload");
             sendUpdate(obj, true);
         } catch (JSONException ex) {
             Log.d(LOG_TAG, "Should never happen");
         }
     }
-    public void onDownloadStart() {
+    public void onDownloadError(int code, String msg) {
         try {
             JSONObject obj = new JSONObject();
-            obj.put("type", LOAD_START_EVENT);
+            obj.put("type", LOAD_ERROR_EVENT);
+            obj.put("code", code);
+            obj.put("message", msg);
             obj.put("category", "filedownload");
-            sendUpdate(obj, true);
+            sendUpdate(obj, true, PluginResult.Status.ERROR);
         } catch (JSONException ex) {
             Log.d(LOG_TAG, "Should never happen");
         }
     }
-
     /**
      * Executes the request and returns PluginResult.
      *
