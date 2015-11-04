@@ -116,104 +116,11 @@ public class InAppBrowser extends CordovaPlugin {
     private boolean mediaPlaybackRequiresUserGesture = false;
     private boolean shouldPauseInAppBrowser = false;
 
-    // custom view pdf stuff
-    private static final String FILE_VIEWER = "_fileviewer";
-    private static final String CONTENT_DIR = "content";
+    // Custom Kivra stuff
     private static final String KIVRA_APP = "com.kivra.Kivra";
     private static final String BANKID_APP = "com.bankid.bus";
     private static final String MARKET_APP = "com.android.vending";
-    private static final String KIVRA_FILE_PROVIDER = "com.kivra.Kivra.fileprovider";
 
-    private class ViewRemoteFileTask extends AsyncTask<String, Void, File> {
-        
-        private Exception exception;
-        private Context context;
-        private String contentType;
-        private Intent intent;
-
-        private void showErrorMessage(CharSequence msg) {
-             int duration = Toast.LENGTH_LONG;
-             Toast toast = Toast.makeText(context, msg, duration);
-             toast.show();    
-        }
-            
-        @Override
-        protected void onPreExecute() {
-            // notify that download has started
-            InAppBrowser.this.onDownloadUpdate(LOAD_START_EVENT);
-            this.context = InAppBrowser.this.cordova.getActivity();
-            intent = new Intent(Intent.ACTION_VIEW);
-        }
-        
-        @Override
-        protected File doInBackground(String... urls) {
-            File dir = new File(this.context.getCacheDir(), CONTENT_DIR);
-            String fileUrlString = urls[0];
-            dir.mkdirs();
-            File outFile = new File(dir, Uri.parse(fileUrlString).getLastPathSegment());
-            try {
-                URL fileUrl = new URL(fileUrlString);
-                HttpsURLConnection urlConnection = (HttpsURLConnection) fileUrl.openConnection();
-                contentType = urlConnection.getContentType();
-                intent.setType(contentType);
-                Uri contentUri = FileProvider.getUriForFile(this.context, KIVRA_FILE_PROVIDER, outFile);
-                intent.setDataAndType(contentUri, contentType);
-                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                // check if there are an application available to present this filetype before finish downloading 
-                if (intent.resolveActivity(context.getPackageManager()) == null) {
-                    throw new ActivityNotFoundException("Kunde inte hitta applikation för den här filtypen");
-                }
-                InputStream is = new BufferedInputStream(urlConnection.getInputStream());
-                FileOutputStream fos = new FileOutputStream(outFile);
-                byte[] buffer = new byte[1024];
-                int len = 0;
-                while ( (len = is.read(buffer)) > 0) {
-                    fos.write(buffer, 0, len);
-                }
-                fos.close();
-                return outFile;
-            }
-            catch (Exception e) {
-                this.exception = e;
-                return null;
-            }
-        }
-
-        @Override
-        protected void onPostExecute(File file) {
-            if (this.exception != null) {
-                InAppBrowser.this.onDownloadError(1, this.exception.getMessage());
-                showErrorMessage(this.exception.getMessage()); //@TODO remove this and let client handle display of error message
-            } else {
-                // everything is fine, we can send away our intent to view the file
-                InAppBrowser.this.onDownloadUpdate(LOAD_STOP_EVENT);
-                context.startActivity(intent);
-            }
-        }
-    }
-    
-    public void onDownloadUpdate(String type) {
-        try {
-            JSONObject obj = new JSONObject();
-            obj.put("type", type);
-            obj.put("category", "filedownload");
-            sendUpdate(obj, true);
-        } catch (JSONException ex) {
-            Log.d(LOG_TAG, "Should never happen");
-        }
-    }
-    public void onDownloadError(int code, String msg) {
-        try {
-            JSONObject obj = new JSONObject();
-            obj.put("type", LOAD_ERROR_EVENT);
-            obj.put("code", code);
-            obj.put("message", msg);
-            obj.put("category", "filedownload");
-            sendUpdate(obj, true, PluginResult.Status.ERROR);
-        } catch (JSONException ex) {
-            Log.d(LOG_TAG, "Should never happen");
-        }
-    }
     /**
      * Executes the request and returns PluginResult.
      *
@@ -305,10 +212,6 @@ public class InAppBrowser extends CordovaPlugin {
                     else if (SYSTEM.equals(target)) {
                         LOG.d(LOG_TAG, "in system");
                         result = openExternal(url);
-                    }
-                    // pdf - custom target
-                    else if (FILE_VIEWER.equals(target)) {
-                        viewFile(url);
                     }
                     // BLANK - or anything else
                     else {
