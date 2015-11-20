@@ -486,7 +486,7 @@ public class InAppBrowser extends CordovaPlugin {
      * @return boolean
      */
     public boolean hardwareBack() {
-        return hadwareBackButton;
+        return hardwareBackButton;
     }
 
     /**
@@ -557,9 +557,9 @@ public class InAppBrowser extends CordovaPlugin {
             }
             Boolean hardwareBack = features.get(HARDWARE_BACK_BUTTON);
             if (hardwareBack != null) {
-                hadwareBackButton = hardwareBack.booleanValue();
+                hardwareBackButton = hardwareBack.booleanValue();
             } else {
-                hadwareBackButton = DEFAULT_HARDWARE_BACK;
+                hardwareBackButton = DEFAULT_HARDWARE_BACK;
             }
             Boolean mediaPlayback = features.get(MEDIA_PLAYBACK_REQUIRES_USER_ACTION);
             if (mediaPlayback != null) {
