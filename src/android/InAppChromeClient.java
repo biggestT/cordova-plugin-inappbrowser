@@ -27,6 +27,7 @@ import org.json.JSONException;
 import android.net.Uri;
 import android.content.Intent;
 import android.app.Activity;
+import android.app.AlertDialog;
 import org.apache.cordova.CordovaPlugin;
 
 import android.webkit.JsPromptResult;
@@ -143,11 +144,18 @@ public class InAppChromeClient extends WebChromeClient {
         return false;
     }
 
-    @Override
-    public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
-        // @TODO We should add some custom stuff here to show nicer alert dialogs
-        return true;
-    }
+    // @Override
+    // public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
+    //     // 1. Instantiate an AlertDialog.Builder with its constructor
+    //     new AlertDialog.Builder(this.plugin.cordova.getActivity())
+    //         .setTitle("Info")
+    //         .setMessage(message)
+    //         .show();
+
+    //     // @TODO We should add some custom stuff here to show nicer alert dialogs
+    //     LOG.d(LOG_TAG, message);
+    //     return true;
+    // }
 
     @Override
     public boolean onShowFileChooser (WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
