@@ -24,7 +24,14 @@ import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 
+import android.net.Uri;
+import android.content.Intent;
+import android.app.Activity;
+import org.apache.cordova.CordovaPlugin;
+
 import android.webkit.JsPromptResult;
+import android.webkit.JsResult;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebStorage;
 import android.webkit.WebView;
@@ -34,12 +41,18 @@ import android.webkit.GeolocationPermissions.Callback;
 public class InAppChromeClient extends WebChromeClient {
 
     private CordovaWebView webView;
+    private Activity parentActivity;
+    private CordovaPlugin plugin;
     private String LOG_TAG = "InAppChromeClient";
     private long MAX_QUOTA = 100 * 1024 * 1024;
+    
+    public ValueCallback<Uri[]> filePathCallback;
+    public static final int INPUT_FILE_REQUEST_CODE = 1;
 
-    public InAppChromeClient(CordovaWebView webView) {
+    public InAppChromeClient(CordovaWebView webView, CordovaPlugin plugin ) {
         super();
         this.webView = webView;
+        this.plugin = plugin;
     }
     /**
      * Handle database quota exceeded notification.
@@ -128,6 +141,21 @@ public class InAppChromeClient extends WebChromeClient {
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
+        // @TODO We should add some custom stuff here to show nicer alert dialogs
+        return true;
+    }
+
+    @Override
+    public boolean onShowFileChooser (WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
+
+        this.filePathCallback = filePathCallback;
+        this.plugin.cordova.startActivityForResult(this.plugin, fileChooserParams.createIntent(), INPUT_FILE_REQUEST_CODE);
+
+        return true;
     }
 
 }

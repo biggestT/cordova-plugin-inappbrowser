@@ -33,6 +33,7 @@ import android.content.ActivityNotFoundException;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.app.Activity;
 import android.provider.Browser;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -109,6 +110,7 @@ public class InAppBrowser extends CordovaPlugin {
     private WebView inAppWebView;
     private EditText edittext;
     private CallbackContext callbackContext;
+    private InAppChromeClient chromeClient;
     private boolean showLocationBar = true;
     private boolean showZoomControls = true;
     private boolean openWindowHidden = false;
@@ -583,6 +585,7 @@ public class InAppBrowser extends CordovaPlugin {
         }
 
         final CordovaWebView thatWebView = this.webView;
+        final CordovaPlugin thatPlugin = this;
 
         // Create dialog in new thread
         Runnable runnable = new Runnable() {
@@ -737,8 +740,15 @@ public class InAppBrowser extends CordovaPlugin {
                 // WebView
                 inAppWebView = new WebView(cordova.getActivity());
                 inAppWebView.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+<<<<<<< 57be2f641451f689eef407ad1c57c0d22ea62806
                 inAppWebView.setId(Integer.valueOf(6));
                 inAppWebView.setWebChromeClient(new InAppChromeClient(thatWebView));
+=======
+
+                chromeClient = new InAppChromeClient(thatWebView, thatPlugin);
+                inAppWebView.setWebChromeClient(chromeClient);
+
+>>>>>>> [input-type file] add filepicking feature
                 WebViewClient client = new InAppBrowserClient(thatWebView, edittext);
                 inAppWebView.setWebViewClient(client);
                 WebSettings settings = inAppWebView.getSettings();
@@ -811,7 +821,7 @@ public class InAppBrowser extends CordovaPlugin {
                 int height = size.y;
 
                 lp.width = (int) (width * .9);
-                lp.height = (int) (height * .9);
+                lp.height = WindowManager.LayoutParams.FILL_PARENT;
                 lp.flags = WindowManager.LayoutParams.FLAG_DIM_BEHIND;
                 lp.dimAmount = (float) 0.7;
 
@@ -854,6 +864,33 @@ public class InAppBrowser extends CordovaPlugin {
                 callbackContext = null;
             }
         }
+    }
+
+    // Handle result from e.g filechooser intent
+    @Override
+    public void onActivityResult (int requestCode, int resultCode, Intent data) {
+
+        // pass forward if this is not called after our customized file chooser
+        if (requestCode != InAppChromeClient.INPUT_FILE_REQUEST_CODE || chromeClient.filePathCallback == null) {
+            super.onActivityResult(requestCode, resultCode, data);
+            return;
+        }
+
+        Uri[] results = null;
+
+        // Check that the response is a good one
+        if(resultCode == Activity.RESULT_OK) {
+            String dataString = data.getDataString();
+            LOG.w(LOG_TAG, dataString);
+            if (dataString != null) {
+                results = new Uri[]{Uri.parse(dataString)};
+            }
+        }
+
+        chromeClient.filePathCallback.onReceiveValue(results);
+        chromeClient.filePathCallback = null;
+
+        return;
     }
 
     /**
