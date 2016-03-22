@@ -27,7 +27,6 @@ import java.io.FileOutputStream;
 import android.os.AsyncTask;
 import java.io.File;
 import java.io.FileDescriptor;
-import android.support.v4.content.FileProvider;
 import android.content.ActivityNotFoundException;
 
 import android.annotation.SuppressLint;
