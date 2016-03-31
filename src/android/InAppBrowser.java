@@ -963,7 +963,33 @@ public class InAppBrowser extends CordovaPlugin {
                     intent.setType("vnd.android-dir/mms-sms");
                     cordova.getActivity().startActivity(intent);
                     return true;
-                } catch (android.content.ActivityNotFoundException e) {
+                }
+                // BankID URL:s should open up on top while letting webview keep on running in background
+                else if (url.startsWith("bankid:")) {
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW);
+                        intent.setPackage(BANKID_APP);
+                        intent.setData(Uri.parse(url));
+                        cordova.getActivity().startActivityForResult(intent, 0);
+                        return true;
+                    } catch (android.content.ActivityNotFoundException e) {
+                        LOG.e(LOG_TAG, "Error opening BankID app" + url + ":" + e.toString());
+                    }
+                }
+                // Kivra URL:s should open up by closing the current webview
+                else if (url.startsWith("kivra:")) {
+                    try {
+                        closeDialog();
+                        Intent intent = new Intent(Intent.ACTION_VIEW);
+                        intent.setPackage(KIVRA_APP);
+                        intent.setData(Uri.parse(url));
+                        cordova.getActivity().startActivity(intent);
+                        return true;
+                    } catch (android.content.ActivityNotFoundException e) {
+                        LOG.e(LOG_TAG, "Error opening Kivra app" + url + ":" + e.toString());
+                    }
+                }
+                catch (android.content.ActivityNotFoundException e) {
                     LOG.e(LOG_TAG, "Error sending sms " + url + ":" + e.toString());
                 }
             }
@@ -1031,51 +1057,6 @@ public class InAppBrowser extends CordovaPlugin {
             }
         }
 
-        // Intercept Kivra app specific URL schemas that needs to be handled in special ways
-        // @TODO, generalize this like e.g the chrome browser does
-        public boolean shouldOverrideUrlLoading(WebView view, String url) {
-
-            // BankID URL:s should open up on top while letting webview keep on running in background
-            if (url.startsWith("bankid:")) {
-                try {
-                    Intent intent = new Intent(Intent.ACTION_VIEW);
-                    intent.setPackage(BANKID_APP);
-                    intent.setData(Uri.parse(url));
-                    cordova.getActivity().startActivityForResult(intent, 0);
-                    return true;
-                } catch (android.content.ActivityNotFoundException e) {
-                    LOG.e(LOG_TAG, "Error opening BankID app" + url + ":" + e.toString());
-                }
-            }
-
-            // Kivra URL:s should open up by closing the current webview
-            else if (url.startsWith("kivra:")) {
-               try {
-                   closeDialog();
-                   Intent intent = new Intent(Intent.ACTION_VIEW);
-                   intent.setPackage(KIVRA_APP);
-                   intent.setData(Uri.parse(url));
-                   cordova.getActivity().startActivity(intent);
-                   return true;
-                } catch (android.content.ActivityNotFoundException e) {
-                    LOG.e(LOG_TAG, "Error opening Kivra app" + url + ":" + e.toString());
-                }
-            }
-            // Market URL:s should open up by closing the current webview
-            else if (url.startsWith("market:")) {
-               try {
-                   closeDialog();
-                   Intent intent = new Intent(Intent.ACTION_VIEW);
-                   intent.setPackage(MARKET_APP);
-                   intent.setData(Uri.parse(url));
-                   cordova.getActivity().startActivity(intent);
-                   return true;
-                } catch (android.content.ActivityNotFoundException e) {
-                    LOG.e(LOG_TAG, "Error opening market app" + url + ":" + e.toString());
-                }
-            }
-            return false;
-        }
         public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
             super.onReceivedError(view, errorCode, description, failingUrl);
 
