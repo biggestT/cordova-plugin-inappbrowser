@@ -739,15 +739,12 @@ public class InAppBrowser extends CordovaPlugin {
                 // WebView
                 inAppWebView = new WebView(cordova.getActivity());
                 inAppWebView.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-<<<<<<< 57be2f641451f689eef407ad1c57c0d22ea62806
+
                 inAppWebView.setId(Integer.valueOf(6));
-                inAppWebView.setWebChromeClient(new InAppChromeClient(thatWebView));
-=======
 
                 chromeClient = new InAppChromeClient(thatWebView, thatPlugin);
                 inAppWebView.setWebChromeClient(chromeClient);
 
->>>>>>> [input-type file] add filepicking feature
                 WebViewClient client = new InAppBrowserClient(thatWebView, edittext);
                 inAppWebView.setWebViewClient(client);
                 WebSettings settings = inAppWebView.getSettings();
