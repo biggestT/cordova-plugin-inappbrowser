@@ -964,35 +964,36 @@ public class InAppBrowser extends CordovaPlugin {
                     cordova.getActivity().startActivity(intent);
                     return true;
                 }
-                // BankID URL:s should open up on top while letting webview keep on running in background
-                else if (url.startsWith("bankid:")) {
-                    try {
-                        Intent intent = new Intent(Intent.ACTION_VIEW);
-                        intent.setPackage(BANKID_APP);
-                        intent.setData(Uri.parse(url));
-                        cordova.getActivity().startActivityForResult(intent, 0);
-                        return true;
-                    } catch (android.content.ActivityNotFoundException e) {
-                        LOG.e(LOG_TAG, "Error opening BankID app" + url + ":" + e.toString());
-                    }
-                }
-                // Kivra URL:s should open up by closing the current webview
-                else if (url.startsWith("kivra:")) {
-                    try {
-                        closeDialog();
-                        Intent intent = new Intent(Intent.ACTION_VIEW);
-                        intent.setPackage(KIVRA_APP);
-                        intent.setData(Uri.parse(url));
-                        cordova.getActivity().startActivity(intent);
-                        return true;
-                    } catch (android.content.ActivityNotFoundException e) {
-                        LOG.e(LOG_TAG, "Error opening Kivra app" + url + ":" + e.toString());
-                    }
-                }
                 catch (android.content.ActivityNotFoundException e) {
                     LOG.e(LOG_TAG, "Error sending sms " + url + ":" + e.toString());
                 }
             }
+            // BankID URL:s should open up on top while letting webview keep on running in background
+            else if (url.startsWith("bankid:")) {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    intent.setPackage(BANKID_APP);
+                    intent.setData(Uri.parse(url));
+                    cordova.getActivity().startActivityForResult(intent, 0);
+                    return true;
+                } catch (android.content.ActivityNotFoundException e) {
+                    LOG.e(LOG_TAG, "Error opening BankID app" + url + ":" + e.toString());
+                }
+            }
+            // Kivra URL:s should open up by closing the current webview
+            else if (url.startsWith("kivra:")) {
+                try {
+                    closeDialog();
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    intent.setPackage(KIVRA_APP);
+                    intent.setData(Uri.parse(url));
+                    cordova.getActivity().startActivity(intent);
+                    return true;
+                } catch (android.content.ActivityNotFoundException e) {
+                    LOG.e(LOG_TAG, "Error opening Kivra app" + url + ":" + e.toString());
+                }
+            }
+        
             return false;
         }
 
