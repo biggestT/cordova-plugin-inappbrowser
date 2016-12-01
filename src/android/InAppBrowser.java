@@ -816,7 +816,7 @@ public class InAppBrowser extends CordovaPlugin {
                 int width = size.x;
                 int height = size.y;
 
-                lp.width = (int) (width * .9);
+                lp.width = WindowManager.LayoutParams.FILL_PARENT;
                 lp.height = WindowManager.LayoutParams.FILL_PARENT;
                 lp.flags = WindowManager.LayoutParams.FLAG_DIM_BEHIND;
                 lp.dimAmount = (float) 0.7;
